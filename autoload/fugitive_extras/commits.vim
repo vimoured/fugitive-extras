@@ -6,9 +6,7 @@ let s:format = '--format=%H%x1f%an%x1f%s%x1f%h  %<(18,trunc)%an  %<(15,trunc)%cr
 " args: what picks the commits (--author=..., -- paths), split already
 function! fugitive_extras#commits#show(branch, base, args) abort
   let l:worktree = FugitiveWorkTree()
-  " Paths as given are relative to here; git runs in the work tree
-  let l:args = map(copy(a:args), {_, a -> a !~# '^-'
-        \ && (filereadable(a) || isdirectory(a)) ? fnamemodify(a, ':p') : a})
+  let l:args = a:args
   let l:dashes = index(l:args, '--')
   call roumail_lists#open('fugitive-extras://commits/' . fnamemodify(l:worktree, ':t'), {
         \ 'fetch': function('s:fetch'), 'heading': function('s:heading'),

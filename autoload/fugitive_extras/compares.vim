@@ -138,10 +138,6 @@ endfunction
 " theirs. Back on this tab's file, where it is still changed
 function! fugitive_extras#compares#refresh() abort
   let l:compare = fugitive_extras#compares#current()
-  if empty(l:compare)
-    call fugitive_extras#error('not in a comparison')
-    return
-  endif
   let l:tabs = s:tabs(l:compare)
   for l:tab in l:tabs
     if !empty(filter(tabpagebuflist(l:tab), 'getbufvar(v:val, "&modified")'))

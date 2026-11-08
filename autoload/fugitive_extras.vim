@@ -160,13 +160,8 @@ function! fugitive_extras#branch_commits(...) abort
   if !fugitive_extras#requires(':BranchCommits', 'vim-lists', 'roumail_lists')
     return
   endif
-  try
-    " % and # are this buffer's file, as on any command line
-    let l:args = map(copy(a:000), 'expandcmd(v:val)')
-  catch
-    call fugitive_extras#error(v:exception)
-    return
-  endtry
+  " % and # are this buffer's file, as on any command line
+  let l:args = map(copy(a:000), 'expandcmd(v:val)')
   let l:branch = 'HEAD'
   " A first word that isn't an option or a path is the branch, so a typo in
   " one is an unknown branch rather than a path for git log
