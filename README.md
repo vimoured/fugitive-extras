@@ -8,7 +8,8 @@ saved per branch.
 "Main" is the repo's default branch: `origin/HEAD`, else `origin/main`,
 `origin/master`, `main` or `master`, resolved per repo when a command runs.
 Diffs are against the **merge-base** of `HEAD` and main, so they show only
-what this branch changes, not what landed on main since it forked.
+what this branch changes, as of where it forked. In every diff the older side
+is on the left, so what was added is on the right.
 `:BranchDiff` shows what the branch's commits change, as the PR would;
 `:BranchDiff!` and `:DiffThis!` show the work tree, uncommitted changes
 included. `:DiffCommit` is the exception: one commit's change, from its
@@ -25,10 +26,10 @@ new remote branches.
 | Command | `<Plug>` mapping | What it does |
 | --- | --- | --- |
 | `:DiffThis` | `<Plug>(fugitive-extras-diff-this)` | `:Gvdiffsplit`: index on the left, working tree on the right. `dp` on a hunk in the working tree stages it, `do` in the index unstages it; `:w` the index buffer to keep it. |
-| `:DiffThis!` | `<Plug>(fugitive-extras-diff-main)` | The current file at the merge-base on the left, working tree on the right: what the branch changes in it. |
-| `:DiffCommit [rev]` | `<Plug>(fugitive-extras-diff-commit)` | The current file as the last commit changed it: `HEAD^` on the left, `HEAD` on the right. With `rev` (`:DiffCommit HEAD~3`, a branch), that commit and its parent. |
+| `:DiffThis!` | `<Plug>(fugitive-extras-diff-main)` | The current file at the merge-base on the left, working tree on the right: what the branch changes in it (*not yet*: with `'splitright'` set, the merge-base is on the right). |
+| `:DiffCommit [rev]` | `<Plug>(fugitive-extras-diff-commit)` | The current file as the last commit changed it: `HEAD^` on the left, `HEAD` on the right. With `rev` (`:DiffCommit HEAD~3`, a branch), that commit and its parent (*not yet*: with `'splitright'` set, the parent is on the right; the same for `:DiffCommit!`). |
 | `:DiffCommit! [rev]` | `<Plug>(fugitive-extras-diff-commit-worktree)` | The commit's parent on the left, working tree on the right: what the commit changed and what came since, uncommitted too, as `!` is for `:BranchDiff!`. |
-| `:BranchDiff [branch]` | `<Plug>(fugitive-extras-branch-diff)` | One tab per file the branch's commits change, each already a diff from the merge-base, on the left, to the branch's last commit, on the right (`:Git difftool -y`), listed in `:Compares`. Both sides are read-only. Uncommitted changes, a stash you applied say, are left out. |
+| `:BranchDiff [branch]` | `<Plug>(fugitive-extras-branch-diff)` | One tab per file the branch's commits change, each already a diff from the merge-base, on the left, to the branch's last commit, on the right (`:Git difftool -y`), listed in `:Compares`. Both sides are read-only. The diffs are of commits only; for uncommitted changes too, a stash you applied say, `:BranchDiff!`. |
 | `:BranchDiff!` | `<Plug>(fugitive-extras-branch-diff-worktree)` | The checked-out branch's work tree instead, committed or not: the merge-base on the left, its files as they are now on the right, to edit and stage in the diff. |
 | `:DiffRefresh` | `<Plug>(fugitive-extras-diff-refresh)` | In a `:BranchDiff` tab, its comparison again as `:BranchDiff` would open it now, under the same name: from a new merge-base, files changed since get tabs and those no longer changed lose theirs, and you're back on the file you were on. For after an agent edits or commits. Its tabs must have no unsaved changes. In another diff, both sides read again. Either way, buffers changed outside Vim are read again, `'autoread'` or not. |
 | `:BranchCommits [branch] [args]` | `<Plug>(fugitive-extras-branch-commits)` | Commits on the branch that main lacks (`git log base..branch`), newest first, in a [vim-lists](https://github.com/roumail/vim-lists) list: hash, author, age, subject. `<CR>` opens a commit in fugitive, in the window above; `/` filters on subject, author and hash; `r` refreshes; `q` closes. Extra args pick which commits, as `git log`'s do: `:BranchCommits --author=mira`, `:BranchCommits -- %` (the commits that change this file). Each commit stays one line; for `--stat` and the like, `:Git log`. |
@@ -37,7 +38,7 @@ new remote branches.
 
 
 Reviewing a PR: check it out (`gh pr checkout`, or `:PRs` in
-[gh-extras](https://github.com/roumail/gh-extras)), then `:BranchDiff` and
+[gh-extras](https://github.com/vimoured/gh-extras)), then `:BranchDiff` and
 `:BranchCommits`.
 
 ## Comparisons
@@ -71,14 +72,14 @@ The list is a [vim-lists](https://github.com/roumail/vim-lists) list: `dd`,
 
 ## Review comments
 
-Comments on a line or a range of a file, collected in their own quickfix
-list titled `Review`, so they don't mix with grep or diff results, saved and
-loaded back.
+Comments on a line or a range of a file, collected in a quickfix list of
+their own, titled `Review`, apart from grep or diff results, saved and loaded
+back.
 
 | Command | `<Plug>` mapping | What it does |
 | --- | --- | --- |
 | `:[range]Comment [text]` | `<Plug>(fugitive-extras-comment)` (normal and visual), which leaves `:Comment ` on the command line to finish | Add a comment on the line or range; prompts unless `text` is given. Leaving the prompt with `<Esc>` keeps what you typed: `:Comment` or `:CommentDraft` on the same lines goes on from it. |
-| `:[range]CommentDraft [text]` | `<Plug>(fugitive-extras-comment-draft)` (normal and visual) | Write the comment in a markdown buffer split below (`g:fugitive_extras_comment_height`, default 10), starting with `text` if given, else with what you left at the `:Comment` prompt on those lines, for longer or multi-line comments. A [vim-draft](https://github.com/roumail/vim-draft) draft: `:w` saves, closing the buffer (`:wq`, or `:q` after `:w`) adds the comment last saved, and an empty one or `:q!` before any `:w` drops it. |
+| `:[range]CommentDraft [text]` | `<Plug>(fugitive-extras-comment-draft)` (normal and visual) | Write the comment in a markdown buffer of 10 lines split below, starting with `text` if given, else with what you left at the `:Comment` prompt on those lines, for longer or multi-line comments. A [vim-draft](https://github.com/roumail/vim-draft) draft: `:w` saves, closing the buffer (`:wq`, or `:q` after `:w`) adds the comment last saved, and an empty one or `:q!` before any `:w` drops it. |
 | `:Comments` | | Open the `Review` list. In it, `c` opens the comment on the line in a draft, all of it, to read or change: saved and closed, it replaces the comment. Deleting one is up to a quickfix list's `dd`, as [qf-tools](https://github.com/roumail/qf-tools) binds it. |
 | `:CommentsSave [file]` | | Write the comments in [vim-review](https://github.com/roumail/vim-review)'s format, their [anchors](#anchors) in `<file>.anchors` beside it, so the file reads as plain comments. Without `file`, each save is a new file named for the time (see below). |
 | `:CommentsLoad [file]` | | Replace the `Review` list with the comments in the file, each moved to where its lines are now; without `file`, the latest save of the branch. `<Tab>` lists the saves, newest first, then files. |
@@ -90,7 +91,7 @@ loaded back.
 - Outside a repository, a comment goes on a file under the current
   directory, with paths relative to it, and saves are kept per directory
   (where vim-place keeps plugins' files outside a repository). The points
-  below about branches don't apply.
+  below about branches are for a repository.
 - Comments are on the branch a tab's comparison diffs (`:BranchDiff feature`),
   else on the checked-out branch, so two comparisons of different branches
   open at once keep their comments apart; comparisons of the same branch
@@ -98,8 +99,8 @@ loaded back.
   `feature`.
 - Saves without a file name are per branch and time,
   `fugitive-extras/comments/<branch>/<YYYYmmdd-HHMMSS>.txt` in the git dir
-  (where vim-place keeps plugins' files), so they are never committed and
-  reviews of different branches stay apart.
+  (where vim-place keeps plugins' files), outside the work tree, so reviews
+  of different branches stay apart.
 - The saves of a deleted branch are deleted: those of a branch that is
   neither local nor any remote's, nor anything else naming a commit (a tag,
   or the commit of a detached HEAD). Once a merged branch's local one is
@@ -132,10 +133,14 @@ comment whose lines are gone stays at its saved line, marked `W` in
 `:Comments`, and keeps its anchor through later saves, so it is found again if
 its lines come back.
 
+*Not yet* marks a known bug: [vim-suite](https://github.com/vimoured/vim-suite)
+asserts the behaviour described (its `test/known-failures.txt`), and the note
+goes once it's fixed.
+
 ## Keys
 
-Apart from `c` in the `Review` list, no keys are bound; bind the `<Plug>`
-mappings yourself, for example:
+The one key bound is `c` in the `Review` list; bind the `<Plug>` mappings
+yourself, for example:
 
 ```vim
 nmap <leader>cd <Plug>(fugitive-extras-diff-main)
@@ -164,7 +169,7 @@ The core is fugitive-extras and
 
 ```vim
 Plug 'tpope/vim-fugitive'
-Plug 'roumail/fugitive-extras'
+Plug 'vimoured/fugitive-extras'
 ```
 
 That gives you the diffs, `:DiffThis`, `:DiffThis!`, `:DiffCommit`, `:BranchDiff`, `:DiffRefresh` and
@@ -173,7 +178,8 @@ That gives you the diffs, `:DiffThis`, `:DiffThis!`, `:DiffCommit`, `:BranchDiff
 plugins.
 
 Each row below adds a module on top of the core, and **Needs** is the whole
-set of plugins it takes besides the core:
+set of plugins it takes besides the core; without them, the command says
+which it needs:
 
 | Needs | Module | Adds |
 | --- | --- | --- |
@@ -190,15 +196,11 @@ Plug 'roumail/vim-lists'
 Plug 'roumail/vim-place'
 Plug 'roumail/vim-draft'
 Plug 'roumail/vim-review'
-Plug 'roumail/fugitive-extras'
+Plug 'vimoured/fugitive-extras'
 ```
 
 ## Tests
 
-```sh
-vim -Nu NONE -i NONE -Es -S test/run.vim
-```
-
-They use vim-plug's copies of the plugins, unless
-`$FUGITIVE`, `$VIM_PLACE`, `$VIM_DRAFT`, `$VIM_LISTS` or `$VIM_REVIEW` name other
-clones.
+Tested by [vim-suite](https://github.com/vimoured/vim-suite), in
+`test/fugitive-extras.vim`, with the dotfiles that use it. Every pull request
+runs them.

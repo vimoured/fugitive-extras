@@ -48,9 +48,6 @@ function! fugitive_extras#comments#prune() abort
   let s:pruned[l:common] = 1
   let l:root = roumail_place#dir('fugitive-extras/comments')
   let l:refs = FugitiveExecute(['for-each-ref', '--format=%(refname)'], l:common)
-  if l:refs.exit_status != 0
-    return
-  endif
   let l:names = {}
   for l:ref in l:refs.stdout
     let l:names[substitute(l:ref, '^refs/\%(heads\|tags\|remotes/[^/]\+\)/', '', '')] = 1
@@ -222,7 +219,7 @@ endfunction
 
 function! s:draft(label, lines, OnClose, verb) abort
   call roumail_draft#open('fugitive-extras://comment/' . a:label, a:lines, a:OnClose,
-        \ {'split': 'belowright ' . get(g:, 'fugitive_extras_comment_height', 10) . 'new',
+        \ {'split': 'belowright 10new',
         \  'saved': 'Comment saved: closing ' . a:verb . ' it',
         \  'empty': 'Comment empty: closing ' . a:verb . ' nothing'})
   setlocal filetype=markdown

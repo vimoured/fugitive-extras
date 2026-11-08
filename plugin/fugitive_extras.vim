@@ -1,8 +1,3 @@
-if exists('g:loaded_fugitive_extras')
-  finish
-endif
-let g:loaded_fugitive_extras = 1
-
 " Index | working tree: dp/do move hunks, :w in the index buffer stages.
 " With !, the file at the merge-base with main | working tree (what the PR
 " changes).
