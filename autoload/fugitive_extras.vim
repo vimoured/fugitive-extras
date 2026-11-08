@@ -78,7 +78,7 @@ function! fugitive_extras#diff_this(bang) abort
   endif
   let l:base = fugitive_extras#base('')
   if !empty(l:base)
-    execute 'Gvdiffsplit' l:base
+    execute 'leftabove Gvdiffsplit' l:base
   endif
 endfunction
 
@@ -109,7 +109,7 @@ function! fugitive_extras#diff_commit(bang, rev) abort
   if !a:bang
     execute 'Gedit' fnameescape(l:rev . ':' . l:path)
   endif
-  execute 'Gvdiffsplit' fnameescape(l:rev . '^')
+  execute 'leftabove Gvdiffsplit' fnameescape(l:rev . '^')
 endfunction
 
 function! s:is_commit(rev) abort
