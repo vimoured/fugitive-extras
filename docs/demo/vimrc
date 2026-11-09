@@ -1,0 +1,48 @@
+" For the README's GIFs: only this plugin and vim-fugitive, and a status line
+" that names each side of a diff.
+set nocompatible
+let s:repo = expand('<sfile>:p:h:h:h')
+execute 'set runtimepath=' . s:repo . ',' . $DEMO_FUGITIVE . ',$VIMRUNTIME'
+filetype plugin indent on
+syntax on
+set termguicolors background=dark laststatus=2 noswapfile nowrap noshowcmd
+set diffopt+=vertical,context:99,foldcolumn:0 fillchars+=diff:\ 
+colorscheme habamax
+highlight StatusLine guifg=#101010 guibg=#d7af5f gui=bold cterm=bold
+highlight StatusLineNC guifg=#d0d0d0 guibg=#585858 gui=bold cterm=bold
+highlight DiffAdd guifg=NONE guibg=#1f4d2b gui=NONE
+highlight DiffDelete guifg=#6c3535 guibg=#3a1f1f gui=NONE
+highlight DiffChange guifg=NONE guibg=#2b3a55 gui=NONE
+highlight DiffText guifg=#ffffff guibg=#3f6db3 gui=bold
+
+let s:head = trim(system('git rev-parse HEAD'))
+let s:parent = trim(system('git rev-parse HEAD^'))
+
+function! DemoSide() abort
+  let l:name = bufname('%')
+  if l:name !~# '^fugitive://'
+    return 'WORK TREE: the file on disk'
+  endif
+  let l:rev = matchstr(l:name, '\.git//\zs[^/]\+')
+  if l:rev ==# '0'
+    return 'INDEX: what is staged'
+  elseif l:rev ==# s:head
+    return 'HEAD: the last commit'
+  elseif l:rev ==# s:parent
+    return 'HEAD^: the commit before it'
+  elseif fugitive_extras#is_base(l:rev)
+    return 'MERGE-BASE: where the branch left main'
+  endif
+  return l:rev[:6]
+endfunction
+set statusline=\ %{DemoSide()}\ \ %t%m
+
+function! DemoTabs() abort
+  let l:line = ''
+  for l:tab in range(1, tabpagenr('$'))
+    let l:name = fnamemodify(bufname(tabpagebuflist(l:tab)[tabpagewinnr(l:tab) - 1]), ':t')
+    let l:line .= (l:tab == tabpagenr() ? '%#TabLineSel#' : '%#TabLine#') . ' ' . l:name . ' '
+  endfor
+  return l:line . '%#TabLineFill#'
+endfunction
+set tabline=%!DemoTabs() shortmess+=F

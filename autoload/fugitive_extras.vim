@@ -73,13 +73,32 @@ endfunction
 
 function! fugitive_extras#diff_this(bang) abort
   if !a:bang
+    let l:win = win_getid()
     Gvdiffsplit
+    if &diff
+      " Fugitive moves to the index: back on the file, where dp stages
+      call win_gotoid(l:win)
+      nnoremap <buffer> <silent> dp <Cmd>call fugitive_extras#stage_hunk()<CR>
+    endif
     return
   endif
   let l:base = fugitive_extras#base('')
   if !empty(l:base)
     execute 'leftabove Gvdiffsplit' l:base
   endif
+endfunction
+
+" dp in :DiffThis's file: the hunk goes to the index, which is written, so it's
+" staged. Without the index beside it (the diff closed), Vim's own dp
+function! fugitive_extras#stage_hunk() abort
+  let l:index = filter(range(1, winnr('$')), {_, w -> getwinvar(w, '&diff')
+        \ && bufname(winbufnr(w)) =~# '^fugitive://.*//0/' && w != winnr()})
+  if !&diff || empty(l:index) || v:count
+    execute 'normal!' (v:count ? v:count : '') . 'dp'
+    return
+  endif
+  execute 'diffput' winbufnr(l:index[0])
+  call win_execute(win_getid(l:index[0]), 'silent write')
 endfunction
 
 " The current file as commit rev (default HEAD) changed it: its parent on the

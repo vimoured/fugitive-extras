@@ -1,4 +1,4 @@
-" Index | working tree: dp/do move hunks, :w in the index buffer stages.
+" Index | working tree, on the working tree: dp stages a hunk.
 " With !, the file at the merge-base with main | working tree (what the PR
 " changes).
 command! -bang DiffThis call fugitive_extras#diff_this(<bang>0)
