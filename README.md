@@ -33,7 +33,7 @@ Three words come up in every diff:
   against it shows what your branch changes, and leaves out what the default
   branch has gained since.
 
-The older side is on the left. In the GIFs, the status lines name each side.
+The older side is on the left, and the cursor starts on the right. In the GIFs, the status lines name each side.
 They come from the demo's config, not from the plugin.
 
 ### `:DiffThis`

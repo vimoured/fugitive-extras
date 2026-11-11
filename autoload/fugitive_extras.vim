@@ -71,20 +71,26 @@ function! fugitive_extras#is_base(rev) abort
   return has_key(s:bases, matchstr(a:rev, '^\x\{40,}'))
 endfunction
 
+" Fugitive's :Gvdiffsplit moves to the side it opens, on the left: the cursor
+" goes back to the right, the side that changed
+function! s:diffsplit(cmd) abort
+  let l:win = win_getid()
+  execute a:cmd
+  call win_gotoid(l:win)
+endfunction
+
 function! fugitive_extras#diff_this(bang) abort
   if !a:bang
-    let l:win = win_getid()
-    Gvdiffsplit
+    call s:diffsplit('Gvdiffsplit')
     if &diff
-      " Fugitive moves to the index: back on the file, where dp stages
-      call win_gotoid(l:win)
+      " On the file, where dp stages
       nnoremap <buffer> <silent> dp <Cmd>call fugitive_extras#stage_hunk()<CR>
     endif
     return
   endif
   let l:base = fugitive_extras#base('')
   if !empty(l:base)
-    execute 'leftabove Gvdiffsplit' l:base
+    call s:diffsplit('leftabove Gvdiffsplit ' . l:base)
   endif
 endfunction
 
@@ -128,7 +134,7 @@ function! fugitive_extras#diff_commit(bang, rev) abort
   if !a:bang
     execute 'Gedit' fnameescape(l:rev . ':' . l:path)
   endif
-  execute 'leftabove Gvdiffsplit' fnameescape(l:rev . '^')
+  call s:diffsplit('leftabove Gvdiffsplit ' . fnameescape(l:rev . '^'))
 endfunction
 
 function! s:is_commit(rev) abort
