@@ -45,10 +45,13 @@ command! -range -nargs=* Comment call fugitive_extras#comments#add(<line1>, <lin
 command! -range -nargs=* CommentDraft call fugitive_extras#comments#edit(<line1>, <line2>, <q-args>)
 " Open the 'Review' list
 command! Comments call fugitive_extras#comments#open()
-" Write the comments to a file (default: a new timestamped save) and load
-" them back (default: the latest save)
-command! -nargs=? -complete=file CommentsSave call fugitive_extras#comments#save(<q-args>)
-command! -nargs=? -complete=customlist,fugitive_extras#comments#complete_load
+" Write the comments to a file and load them back, as vim-place's save
+" contract has it: a name, a path, a directory, or nothing for the file this
+" branch's comments were last saved to or loaded from (:CommentsLoad: the
+" newest save)
+command! -bang -nargs=? -complete=customlist,fugitive_extras#comments#complete
+      \ CommentsSave call fugitive_extras#comments#save(<bang>0, <q-args>)
+command! -nargs=? -complete=customlist,fugitive_extras#comments#complete
       \ CommentsLoad call fugitive_extras#comments#load(<q-args>)
 " Empty the 'Review' list; saves are kept
 command! CommentsClear call fugitive_extras#comments#clear()
