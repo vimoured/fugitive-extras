@@ -309,17 +309,45 @@ function! s:key(comment) abort
         \ . (a:comment.end > a:comment.start ? '-' . a:comment.end : '')
 endfunction
 
-function! s:saves() abort
-  return reverse(sort(map(glob(s:save_dir() . '/*.txt', 1, 1),
-        \ 'fnamemodify(v:val, ":t")')))
+" :CommentsSave and :CommentsLoad keep the save contract in vim-place's
+" README (a name, a path, a directory, or nothing), scoped to the branch,
+" with the deviations in this plugin's README: an .anchors file goes beside
+" every save.
+
+" The file each branch's comments were last saved to or loaded from, by the
+" branch's save directory
+let s:files = {}
+
+" A path has a / or starts with ~ or .; anything else is a save's name
+function! s:is_path(arg) abort
+  return a:arg =~# '/' || a:arg =~# '^[~.]'
 endfunction
 
-function! fugitive_extras#comments#complete_load(lead, cmdline, pos) abort
-  if a:lead =~# '[/~.]' || !fugitive_extras#installed('roumail_place')
+" Named for the time, so they sort
+function! s:new_file(dir) abort
+  let l:base = a:dir . '/' . strftime('%Y%m%d-%H%M%S')
+  let l:file = l:base . '.txt'
+  let l:n = 1
+  while filereadable(l:file)
+    let l:n += 1
+    let l:file = l:base . '-' . l:n . '.txt'
+  endwhile
+  return l:file
+endfunction
+
+" The saves in dir, newest first
+function! s:saves(dir) abort
+  return sort(glob(a:dir . '/*.txt', 1, 1), {a, b -> getftime(a) != getftime(b)
+        \ ? getftime(b) - getftime(a) : a ==# b ? 0 : a <# b ? 1 : -1})
+endfunction
+
+" The saves' names, newest first, then files once it's a path
+function! fugitive_extras#comments#complete(lead, cmdline, pos) abort
+  if s:is_path(a:lead) || !fugitive_extras#installed('roumail_place')
     return getcompletion(a:lead, 'file')
   endif
-  return filter(s:saves(), 'stridx(v:val, a:lead) == 0')
-        \ + getcompletion(a:lead, 'file')
+  return filter(map(s:saves(s:save_dir()), 'fnamemodify(v:val, ":t:r")'),
+        \ 'stridx(v:val, a:lead) == 0')
 endfunction
 
 function! s:requires_saves(what) abort
@@ -327,13 +355,30 @@ function! s:requires_saves(what) abort
         \ && fugitive_extras#requires(a:what, 'vim-review', 'review')
 endfunction
 
-function! fugitive_extras#comments#save(file) abort
+" The file to write: the given path, a new file in the given directory, a
+" name's file, else the file last saved to or loaded from, else a new one
+function! s:save_target(dir, arg) abort
+  if empty(a:arg)
+    return has_key(s:files, a:dir) ? s:files[a:dir] : s:new_file(a:dir)
+  elseif !s:is_path(a:arg)
+    return a:dir . '/' . a:arg . '.txt'
+  endif
+  " :p ends an existing directory with /
+  let l:path = fnamemodify(a:arg =~# '^[~$]' ? expand(a:arg) : a:arg, ':p')
+  return l:path =~# '/$' ? s:new_file(substitute(l:path, '/\+$', '', '')) : l:path
+endfunction
+
+function! fugitive_extras#comments#save(bang, arg) abort
   if !s:requires_saves(':CommentsSave')
     return
   endif
-  " Named for the time, so they sort
-  let l:file = empty(a:file) ? s:save_dir() . '/' . strftime('%Y%m%d-%H%M%S') . '.txt'
-        \ : fnamemodify(a:file, ':p')
+  let l:dir = s:save_dir()
+  let l:file = s:save_target(l:dir, a:arg)
+  " A name is the branch's to save again; a path you gave, only with !
+  if s:is_path(a:arg) && filereadable(l:file) && !a:bang && l:file !=# get(s:files, l:dir, '')
+    call fugitive_extras#error(fnamemodify(l:file, ':~') . ' exists (add ! to overwrite)')
+    return
+  endif
   let l:items = s:items()
   let l:comments = s:comments()
   let l:files = {}
@@ -361,6 +406,8 @@ function! fugitive_extras#comments#save(file) abort
     endif
   endfor
   call mkdir(fnamemodify(l:file, ':h'), 'p')
+  " A failed write is an error before the file is taken: the comments stay
+  " unsaved
   call review#write(l:file, l:comments)
   " The anchors are not for reading, so they go beside the comments
   if empty(l:anchors)
@@ -368,26 +415,37 @@ function! fugitive_extras#comments#save(file) abort
   else
     call writefile(l:anchors, l:file . '.anchors')
   endif
+  let s:files[l:dir] = l:file
   call s:mark(0)
   echo 'Saved ' . len(l:comments) . ' review comments to ' . fnamemodify(l:file, ':~')
 endfunction
 
-function! fugitive_extras#comments#load(file) abort
+" The given path or name's file, else the newest save of the branch
+function! fugitive_extras#comments#load(arg) abort
   if !s:requires_saves(':CommentsLoad')
     return
   endif
-  let l:saves = s:saves()
-  let l:file = index(l:saves, a:file) >= 0 ? s:save_dir() . '/' . a:file
-        \ : !empty(a:file) ? fnamemodify(a:file, ':p')
-        \ : empty(l:saves) ? '' : s:save_dir() . '/' . l:saves[0]
-  if empty(l:file)
-    let l:scope = s:scope()
-    call fugitive_extras#error('no saved comments' . (empty(l:scope) ? '' : ' for ' . l:scope))
-    return
-  endif
-  if !filereadable(l:file)
-    call fugitive_extras#error('no review file ' . fnamemodify(l:file, ':~'))
-    return
+  let l:dir = s:save_dir()
+  let l:scope = s:scope()
+  let l:for = empty(l:scope) ? '' : ' for ' . l:scope
+  if empty(a:arg)
+    let l:file = get(s:saves(l:dir), 0, '')
+    if empty(l:file)
+      call fugitive_extras#error('no saved comments' . l:for)
+      return
+    endif
+  elseif s:is_path(a:arg)
+    let l:file = fnamemodify(a:arg =~# '^[~$]' ? expand(a:arg) : a:arg, ':p')
+    if !filereadable(l:file)
+      call fugitive_extras#error('no review file ' . fnamemodify(l:file, ':~'))
+      return
+    endif
+  else
+    let l:file = l:dir . '/' . a:arg . '.txt'
+    if !filereadable(l:file)
+      call fugitive_extras#error('no saved comments ' . a:arg . l:for)
+      return
+    endif
   endif
   let l:sidecar = {}
   if filereadable(l:file . '.anchors')
@@ -413,6 +471,7 @@ function! fugitive_extras#comments#load(file) abort
   endfor
   call setqflist([], 'r', {'id': s:list_id(), 'items': l:items})
   call s:mark(0)
+  let s:files[l:dir] = l:file
 
   let l:items = s:items()
   let l:trimmed = {}
@@ -466,7 +525,7 @@ function! fugitive_extras#comments#load(file) abort
 
   call fugitive_extras#comments#open()
   redraw
-  echo 'Review comments: ' . len(l:items)
+  echo 'Review comments: ' . len(l:items) . ' from ' . fnamemodify(l:file, ':~')
         \ . (l:moved ? ', ' . l:moved . ' moved to where their lines are now' : '')
         \ . (l:lost ? ', ' . l:lost . ' whose lines are gone (W)' : '')
 endfunction

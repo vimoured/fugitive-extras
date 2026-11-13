@@ -95,9 +95,19 @@ Comments go in a quickfix list titled `Review`:
 | `:[range]Comment [text]` | Comment on a line or range. |
 | `:[range]CommentDraft [text]` | Write the comment in a draft. |
 | `:Comments` | Open the list; `c` edits the comment on the line. |
-| `:CommentsSave [file]` | Save the comments, per branch without `file`. |
-| `:CommentsLoad [file]` | Load comments, moved to where their lines are now. |
+| `:CommentsSave[!] [name\|path\|dir/]` | Save the comments. With no argument, to the file this branch's comments were last saved to or loaded from, else a new one. `!` overwrites another file at that path. |
+| `:CommentsLoad [name\|path]` | Load comments, moved to where their lines are now; with no argument, the newest save. `<Tab>` completes names. |
 | `:CommentsClear` | Empty the list; saves are kept. |
+
+`:CommentsSave` and `:CommentsLoad` keep vim-place's
+[save contract](https://github.com/vimoured/vim-place#the-save-contract), scoped
+to the branch the comments are on, apart from these deviations:
+
+| Deviation | |
+| --- | --- |
+| An `.anchors` file goes beside every save, a path's or a directory's too. | Needed: `:CommentsLoad` finds the comments' lines with it. |
+| vim-place and vim-review are needed for a path too. | Needed: a comment's path is relative to vim-place's work tree. |
+| Errors read `fugitive-extras: …` and don't abort. | Needed: as the plugin's other errors, and vim-prompts and gh-extras call the load. |
 
 Every command except `:Comments`, `:CommentsSave`, `:CommentsLoad` and
 `:CommentsClear` has a `<Plug>` mapping to bind, for example:
